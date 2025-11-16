@@ -1,0 +1,74 @@
+{
+  "pkgName": "valid-test-plugin",
+  "version": "1.0.0",
+  "cmds": [
+    {
+      "name": "valid-test",
+      "type": "executable",
+      "group": "testing",
+      "short": "A valid test plugin for validation testing",
+      "long": "This is a complete test plugin with all required fields for testing the Command Launcher Package Action validation and packaging functionality.",
+      "executable": "{{.PackageDir}}/bin/valid-test",
+      "args": [],
+      "flags": [
+        {
+          "name": "verbose",
+          "short": "v",
+          "desc": "Enable verbose output",
+          "type": "bool",
+          "required": false
+        },
+        {
+          "name": "output",
+          "short": "o",
+          "desc": "Output file path",
+          "type": "string",
+          "default": "output.txt",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "valid-check",
+      "type": "executable",
+      "group": "testing",
+      "short": "Check plugin validity and configuration",
+      "long": "Performs comprehensive validation checks on the plugin installation, configuration, and runtime environment. Useful for troubleshooting and verifying correct setup.",
+      "executable": "{{.PackageDir}}/bin/valid-check",
+      "flags": [
+        {
+          "name": "config",
+          "short": "c",
+          "desc": "Path to configuration file",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "strict",
+          "desc": "Enable strict validation mode",
+          "type": "bool",
+          "required": false
+        },
+        {
+          "name": "format",
+          "short": "f",
+          "desc": "Output format (text, json, yaml)",
+          "type": "string",
+          "default": "text",
+          "required": false
+        }
+      ]
+    }
+  ],
+  "_metadata": {
+    "author": "Test Author <test@example.com>",
+    "license": "MIT",
+    "homepage": "https://example.com/valid-plugin",
+    "repository": "https://github.com/example/valid-plugin",
+    "tags": [
+      "test",
+      "utility",
+      "example"
+    ]
+  }
+}

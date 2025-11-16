@@ -1,0 +1,117 @@
+import * as core from '@actions/core';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { logger } from './utils/logger';
+import { findPackageDirectories, readManifest } from './utils/manifest';
+import { createZip, formatBytes, ArchiveFormat } from './utils/archive';
+import { PackagedPackage } from './types/manifest';
+
+/**
+ * Create packages archives (ZIP format)
+ */
+
+export interface PackageOptions {
+  packagesDirectory: string;
+  outputDirectory: string;
+  format?: ArchiveFormat;
+}
+
+export interface PackageResult {
+  packages: PackagedPackage[];
+}
+
+export async function createPackages(options: PackageOptions): Promise<PackageResult> {
+  logger.header('Creating Packages');
+
+  const { packagesDirectory, outputDirectory, format = 'zip' } = options;
+
+  // Display directory info (empty means auto-detect)
+  const displayDir =
+    packagesDirectory === '' || packagesDirectory === '.' ? '(auto-detect)' : packagesDirectory;
+  logger.info(`Packages directory: ${displayDir}`);
+  logger.info(`Output directory: ${outputDirectory}`);
+  logger.info(`Archive format: ${format}`);
+
+  // Ensure output directory exists
+  await fs.mkdir(outputDirectory, { recursive: true });
+
+  // Find all package directories
+  const packageDirs = await findPackageDirectories(packagesDirectory);
+
+  if (packageDirs.length === 0) {
+    const searchLocation =
+      packagesDirectory === '' || packagesDirectory === '.'
+        ? 'current directory or subdirectories'
+        : packagesDirectory;
+    throw new Error(
+      `No packages found in ${searchLocation}. Ensure manifest.mf exists in root (single-package) or in subdirectories (multi-package).`
+    );
+  }
+
+  logger.info(`Found ${packageDirs.length} package(s) to create`);
+
+  const packages: PackagedPackage[] = [];
+
+  // Create each package
+  for (const packageDir of packageDirs) {
+    const packageName = path.basename(packageDir);
+
+    logger.startGroup(`Creating package: ${packageName}`);
+
+    try {
+      // Read manifest to get version
+      const manifest = await readManifest(packageDir);
+
+      logger.info(`Package: ${manifest.pkgName}`);
+      logger.info(`Version: ${manifest.version}`);
+
+      // Create archive name: {pkgName}-{version}.pkg
+      const archiveName = `${manifest.pkgName}-${manifest.version}.pkg`;
+      const archivePath = path.join(outputDirectory, archiveName);
+
+      // Create ZIP archive
+      await createZip(packageDir, archivePath, packageName);
+
+      // Get file size
+      const stats = await fs.stat(archivePath);
+
+      logger.success(`✅ Packaged: ${archiveName}`);
+      logger.info(`   Size: ${formatBytes(stats.size)}`);
+
+      packages.push({
+        name: manifest.pkgName,
+        version: manifest.version,
+        archivePath,
+        size: stats.size,
+        sourceDirectory: packageDir,
+      });
+    } catch (error) {
+      logger.error(
+        `Failed to create package ${packageName}: ${error instanceof Error ? error.message : String(error)}`
+      );
+      throw error;
+    } finally {
+      logger.endGroup();
+    }
+  }
+
+  // Summary
+  logger.header('Package Creation Summary');
+  logger.info(`Total packages created: ${packages.length}`);
+
+  const totalSize = packages.reduce((sum, pkg) => sum + pkg.size, 0);
+  logger.info(`Total size: ${formatBytes(totalSize)}`);
+
+  // Set outputs
+  const artifactsList = packages.map(pkg => ({
+    name: pkg.name,
+    version: pkg.version,
+    archive: path.basename(pkg.archivePath),
+    size: pkg.size,
+  }));
+
+  core.setOutput('packaged-artifacts', JSON.stringify(artifactsList));
+  core.setOutput('package-count', packages.length);
+
+  return { packages };
+}

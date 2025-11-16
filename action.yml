@@ -1,0 +1,68 @@
+name: 'Command Launcher Package Action'
+description: 'Automate Command Launcher package lifecycle - validate manifests, create .pkg releases, and publish to OCI registries'
+author: 'Alexander Mazurov'
+
+branding:
+  icon: 'package'
+  color: 'blue'
+
+inputs:
+  packages-directory:
+    description: 'Directory containing packages. Empty (default) = auto-detect: single package (root has manifest.mf) or multi-package (scan subdirectories). Set to specific path for multi-package repos with custom structure.'
+    required: false
+    default: ''
+
+  validate-only:
+    description: 'Only validate manifests without packaging'
+    required: false
+    default: 'false'
+
+  package-format:
+    description: 'Package format: zip (creates ZIP archives), oci (pushes to OCI registry), or both'
+    required: false
+    default: 'zip'
+
+  oci-registry:
+    description: 'OCI registry URL (e.g., ghcr.io/username)'
+    required: false
+    default: ''
+
+  oci-username:
+    description: 'OCI registry username'
+    required: false
+    default: ''
+
+  oci-token:
+    description: 'OCI registry token/password'
+    required: false
+    default: ''
+
+  github-token:
+    description: 'GitHub token for creating individual releases for each plugin (format: plugin-name-version)'
+    required: false
+    default: ''
+
+  force-release:
+    description: 'Force recreate releases by deleting existing releases and tags first (default: false)'
+    required: false
+    default: 'false'
+
+outputs:
+  validated-packages:
+    description: 'JSON array of validated package directories'
+
+  valid-count:
+    description: 'Number of valid packages'
+
+  invalid-count:
+    description: 'Number of invalid packages'
+
+  packaged-artifacts:
+    description: 'JSON array of created artifact paths with metadata'
+
+  package-count:
+    description: 'Number of packages created'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

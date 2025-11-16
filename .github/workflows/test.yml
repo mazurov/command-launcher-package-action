@@ -1,0 +1,172 @@
+name: Test Action
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  # ===========================================================================
+  # Build and Unit Tests
+  # ===========================================================================
+  build-and-test:
+    name: Build and Unit Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Package for distribution
+        run: npm run package
+
+      - name: Check dist/ is up to date
+        if: ${{ !env.ACT }}  # Skip when running with act locally
+        run: |
+          if [ "$(git diff --ignore-space-at-eol dist/ | wc -l)" -gt "0" ]; then
+            echo "Detected uncommitted changes after build. Please rebuild and commit."
+            git diff
+            exit 1
+          fi
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info
+          flags: unittests
+        continue-on-error: true
+
+  # ===========================================================================
+  # Validation Tests (Valid Plugins)
+  # ===========================================================================
+  test-validation-valid:
+    name: Test Validation (Valid Plugins)
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate valid plugins
+        uses: ./
+        with:
+          packages-directory: 'tests/valid'
+          validate-only: 'true'
+
+      - name: Display validation results
+        run: echo "✅ Validation completed successfully"
+
+  # ===========================================================================
+  # Validation Tests (Invalid Plugins - Expected Failure)
+  # ===========================================================================
+  test-validation-invalid:
+    name: Test Validation (Invalid Plugins - Expected Failure)
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate invalid plugins (expect failure)
+        id: validate-invalid
+        continue-on-error: true
+        uses: ./
+        with:
+          packages-directory: 'tests/invalid'
+          validate-only: 'true'
+
+      - name: Check validation failed as expected
+        run: |
+          if [ "${{ steps.validate-invalid.outcome }}" = "failure" ]; then
+            echo "✅ Validation correctly failed for invalid plugins"
+            exit 0
+          else
+            echo "❌ Validation should have failed but didn't!"
+            exit 1
+          fi
+
+  # ===========================================================================
+  # Packaging Tests
+  # ===========================================================================
+  test-packaging:
+    name: Test Packaging (.pkg)
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Package valid plugins
+        id: package
+        uses: ./
+        with:
+          packages-directory: 'tests/valid'
+          package-format: 'zip'
+
+      - name: Verify packages were created
+        run: |
+          echo "📦 Checking for created packages..."
+          if [ ! -d "build/packages" ]; then
+            echo "❌ build/packages directory not found"
+            exit 1
+          fi
+
+          package_count=$(ls -1 build/packages/*.pkg 2>/dev/null | wc -l)
+          if [ "$package_count" -eq 0 ]; then
+            echo "❌ No .pkg packages found"
+            exit 1
+          fi
+
+          echo "✅ Found $package_count package(s):"
+          ls -lh build/packages/*.pkg
+
+      - name: Verify package contents
+        run: |
+          echo "📋 Verifying package contents..."
+          for archive in build/packages/*.pkg; do
+            if [ -f "$archive" ]; then
+              echo ""
+              echo "Contents of $(basename $archive):"
+              unzip -l "$archive" | head -25
+
+              # Verify manifest exists in archive
+              if unzip -l "$archive" | grep -q "manifest.mf"; then
+                echo "✅ manifest.mf found in archive"
+              else
+                echo "❌ manifest.mf missing from archive!"
+                exit 1
+              fi
+            fi
+          done
+
+      - name: Upload test packages
+        if: ${{ !env.ACT }}  # Skip when running with act locally
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-packages
+          path: build/packages/*.pkg
+          retention-days: 7
+
+  # ===========================================================================
+  # Documentation Tests (Node.js - Integration)
+  # ===========================================================================
+  # Note: Full documentation generation tests require GitHub Releases
+  # These will be tested in actual release workflows
+  # Unit tests for documentation utilities are in the test suite

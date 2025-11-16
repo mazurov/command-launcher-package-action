@@ -1,0 +1,30 @@
+pkgName: single-package-test
+version: 1.0.0
+cmds:
+  - name: test-cmd
+    type: executable
+    group: testing
+    short: A test command for single-package mode
+    long: This tests the action with a single package at repository root
+    executable: "{{.PackageDir}}/bin/test-cmd.sh"
+    flags:
+      - name: output
+        short: o
+        desc: Output file path
+        type: string
+        required: false
+        default: output.txt
+      - name: verbose
+        short: v
+        desc: Enable verbose mode
+        type: bool
+        required: false
+
+_metadata:
+  author: Test Author <test@example.com>
+  license: MIT
+  homepage: https://example.com/single-package-test
+  repository: https://github.com/example/single-package-test
+  tags:
+    - test
+    - single-package

@@ -1,0 +1,200 @@
+# ==============================================================================
+# EXAMPLE WORKFLOW FOR PLUGIN REPOSITORIES
+# ==============================================================================
+# This is a template workflow for repositories that contain Command Launcher plugins.
+# Copy this file to YOUR plugin repository at: .github/workflows/plugins-ci.yml
+#
+# DO NOT use this in the command-launcher-package-action repository itself!
+#
+# USAGE MODES:
+# 1. Single-package repo: Root directory contains manifest.mf
+#    - Don't specify packages-directory (or set to '')
+#    - Repository structure: /manifest.mf, /README.md, /bin/, etc.
+#
+# 2. Multi-package repo: Multiple packages in subdirectories
+#    - Set packages-directory to your packages folder (e.g., 'packages')
+#    - Repository structure: /packages/plugin1/, /packages/plugin2/, etc.
+# ==============================================================================
+
+name: Plugin CI/CD Pipeline
+
+on:
+  push:
+    # Validate on pushes to ANY branch
+    # Only main/develop will package and publish plugins (controlled by job conditions)
+    # For single-package repo: use 'manifest.mf' and other relevant paths
+    # For multi-package repo: use 'packages/**'
+    paths:
+      - 'manifest.mf'       # Single-package mode
+      - 'packages/**'       # Multi-package mode
+      - 'bin/**'            # Plugin executables
+      - 'lib/**'            # Plugin libraries
+      - 'README.md'         # Plugin documentation
+      - '.github/workflows/plugins-ci.yml'
+  pull_request:
+    # Validate on ALL pull requests (regardless of target branch)
+    paths:
+      - 'manifest.mf'
+      - 'packages/**'
+      - 'bin/**'
+      - 'lib/**'
+      - 'README.md'
+      - '.github/workflows/plugins-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write  # Required for creating releases
+  packages: write  # Required for pushing to OCI registry
+
+jobs:
+  # ============================================================================
+  # Validation Job - Runs on every push and PR
+  # ============================================================================
+  validate:
+    name: Validate Plugin Manifests
+    runs-on: ubuntu-latest
+    outputs:
+      validated-plugins: ${{ steps.validate.outputs.validated-plugins }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate manifests
+        id: validate
+        uses: mazurov/command-launcher-package-action@main
+        with:
+          # For single-package repo: omit packages-directory or set to ''
+          # For multi-package repo: set to 'packages' or your custom directory
+          # packages-directory: 'packages'
+          validate-only: 'true'
+
+      - name: Display validation results
+        run: |
+          echo "✅ Validation completed successfully"
+          echo "Validated plugins: ${{ steps.validate.outputs.validated-plugins }}"
+
+  # ============================================================================
+  # Test Package Job - Runs on PRs and branches
+  # ============================================================================
+  test-package:
+    name: Test Package Generation
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.event_name == 'pull_request' || github.ref != 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Package plugins (.pkg)
+        uses: mazurov/command-launcher-package-action@main
+        with:
+          # For single-package repo: omit packages-directory
+          # For multi-package repo: uncomment and set the directory
+          # packages-directory: 'packages'
+          package-format: 'zip'
+
+      - name: List generated packages
+        run: |
+          echo "📦 Generated packages:"
+          ls -lh build/packages/*.pkg
+
+      - name: Upload test packages as artifacts
+        if: ${{ !env.ACT }}  # Skip when running with act locally
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-plugin-packages
+          path: build/packages/*.pkg
+          retention-days: 7
+
+  # ============================================================================
+  # Release Job - Runs on main and develop branches only
+  # Packages plugins, creates individual GitHub releases, and publishes to OCI registry
+  # ============================================================================
+  release:
+    name: Release Plugins
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+
+    outputs:
+      packaged-artifacts: ${{ steps.package.outputs.packaged-artifacts }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better release notes
+
+      - name: Package and publish plugins
+        id: package
+        uses: mazurov/command-launcher-package-action@main
+        with:
+          # For single-package repo: omit packages-directory
+          # For multi-package repo: uncomment and set the directory
+          # packages-directory: 'packages'
+          package-format: 'both'  # Create .pkg archives AND push to OCI registry
+          oci-registry: 'ghcr.io/${{ github.repository_owner }}'
+          oci-username: ${{ github.actor }}
+          oci-token: ${{ secrets.OCI_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}  # Creates individual releases per plugin
+          # force-release: 'true'  # Uncomment to force recreate releases (deletes existing releases/tags first)
+
+      - name: Summary
+        run: |
+          echo "## ✅ Release Completed Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Individual Plugin Releases" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Each plugin has been released with tag format: \`<plugin-name>-<version>\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Packages:** ${{ steps.package.outputs.packaged-artifacts }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 OCI Registry" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Registry:** \`ghcr.io/${{ github.repository_owner }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Pull plugins with:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "oras pull ghcr.io/${{ github.repository_owner }}/<plugin-name>:latest" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> **Note:** Existing releases and OCI versions are automatically skipped" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
+  # Cleanup Job - Clean up old workflow runs and artifacts
+  # ============================================================================
+  cleanup:
+    name: Cleanup Old Artifacts
+    runs-on: ubuntu-latest
+    needs: [release]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+
+    steps:
+      - name: Delete old workflow runs and artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const days = 30;
+            const timestamp = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+            const { data: runs } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'plugins-ci.yml',
+              status: 'success',
+              created: `<${timestamp}`,
+              per_page: 100
+            });
+
+            console.log(`Found ${runs.workflow_runs.length} old workflow runs`);
+
+            for (const run of runs.workflow_runs) {
+              console.log(`Deleting run ${run.id}`);
+              await github.rest.actions.deleteWorkflowRun({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: run.id
+              });
+            }

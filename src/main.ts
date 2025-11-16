@@ -1,0 +1,118 @@
+import * as core from '@actions/core';
+import { logger } from './utils/logger';
+import { validatePackages } from './validate';
+import { createPackages } from './package';
+import { pushToOCI } from './oci';
+import { createPluginReleases } from './release';
+
+/**
+ * Main entry point for the Command Launcher Package Action
+ */
+
+async function run(): Promise<void> {
+  try {
+    // Get inputs
+    const packagesDirectory = core.getInput('packages-directory') || ''; // Default to empty (auto-detect)
+    const validateOnly = core.getInput('validate-only') === 'true';
+    const packageFormat = core.getInput('package-format') || 'zip';
+    const ociRegistry = core.getInput('oci-registry');
+    const ociUsername = core.getInput('oci-username');
+    const ociToken = core.getInput('oci-token');
+    const githubToken = core.getInput('github-token');
+    const forceRelease = core.getInput('force-release') === 'true';
+    const githubRepository = process.env.GITHUB_REPOSITORY || '';
+
+    logger.header('Cola Package Action');
+    const displayDir =
+      packagesDirectory === '' || packagesDirectory === '.' ? '(auto-detect)' : packagesDirectory;
+    logger.info(`Packages Directory: ${displayDir}`);
+    logger.info(`Validate Only: ${validateOnly}`);
+    logger.info(`Package Format: ${packageFormat}`);
+
+    // Step 1: Validate manifests
+    const validateResult = await validatePackages({
+      packagesDirectory,
+    });
+
+    if (validateResult.invalidPackages.length > 0) {
+      throw new Error(
+        `Validation failed for ${validateResult.invalidPackages.length} package(s): ${validateResult.invalidPackages.join(', ')}`
+      );
+    }
+
+    // If validate-only mode, stop here
+    if (validateOnly) {
+      logger.success('✅ Validation complete (validate-only mode)');
+      return;
+    }
+
+    // Step 2: Package plugins
+    let packagesCreated = false;
+    const outputDirectory = 'build/packages';
+    let packageResult: Awaited<ReturnType<typeof createPackages>> | null = null;
+
+    // Determine what to create based on package format
+    const needsZipPackages = packageFormat === 'zip' || packageFormat === 'both';
+    const needsOciPush = (packageFormat === 'oci' || packageFormat === 'both') && ociRegistry;
+
+    // Create ZIP archives for GitHub Releases/Artifacts AND for OCI registry push
+    // ZIP archives are needed for both artifact uploads and OCI registry pushes
+    if (needsZipPackages || needsOciPush) {
+      packageResult = await createPackages({
+        packagesDirectory,
+        outputDirectory,
+        format: 'zip',
+      });
+      packagesCreated = true;
+    }
+
+    // Step 3: Push to OCI registry (uses ZIP files created in previous step)
+    if (needsOciPush) {
+      if (!ociUsername || !ociToken) {
+        throw new Error('OCI registry credentials required (oci-username and oci-token)');
+      }
+
+      await pushToOCI({
+        outputDirectory,
+        registry: ociRegistry,
+        username: ociUsername,
+        token: ociToken,
+        forceRelease,
+      });
+    }
+
+    // Step 4: Create GitHub Releases (one release per plugin)
+    if (packageResult && packageResult.packages.length > 0 && githubToken) {
+      if (!githubRepository) {
+        throw new Error('GITHUB_REPOSITORY environment variable not set');
+      }
+
+      await createPluginReleases({
+        packages: packageResult.packages,
+        githubToken,
+        repository: githubRepository,
+        forceRelease,
+        ociRegistry: ociRegistry || undefined,
+      });
+    }
+
+    // Final summary
+    logger.header('Action Complete');
+    logger.success('✅ All steps completed successfully');
+
+    if (packagesCreated) {
+      logger.info(`📦 Packages created in: ${outputDirectory}`);
+    }
+
+    if (needsOciPush) {
+      logger.info(`🚀 Plugins pushed to OCI registry: ${ociRegistry}`);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(message);
+    core.setFailed(message);
+  }
+}
+
+// Run the action
+run();
