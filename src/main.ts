@@ -18,7 +18,6 @@ async function run(): Promise<void> {
     const ociRegistry = core.getInput('oci-registry');
     const ociUsername = core.getInput('oci-username');
     const ociToken = core.getInput('oci-token');
-    const ociVisibility = (core.getInput('oci-visibility') || 'public') as 'public' | 'private';
     const githubToken = core.getInput('github-token');
     const forceRelease = core.getInput('force-release') === 'true';
     const githubRepository = process.env.GITHUB_REPOSITORY || '';
@@ -79,7 +78,6 @@ async function run(): Promise<void> {
         username: ociUsername,
         token: ociToken,
         forceRelease,
-        visibility: ociVisibility,
       });
     }
 

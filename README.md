@@ -77,11 +77,8 @@ jobs:
           oci-registry: 'ghcr.io/${{ github.repository_owner }}'
           oci-username: ${{ github.actor }}
           oci-token: ${{ secrets.GITHUB_TOKEN }}
-          oci-visibility: 'public'  # Make packages public (default)
           github-token: ${{ secrets.GITHUB_TOKEN }}  # Creates individual releases
 ```
-
-> **Note**: Packages pushed to GitHub Container Registry are set to `public` by default. Use `oci-visibility: 'private'` for private packages.
 
 Users can install your package with:
 ```bash
@@ -100,7 +97,6 @@ See [Package Installation Methods](docs/INSTALLATION.md) for all installation op
 | `oci-registry` | No | - | OCI registry URL (e.g., `ghcr.io/username`) |
 | `oci-username` | No | - | OCI registry username |
 | `oci-token` | No | - | OCI registry token/password |
-| `oci-visibility` | No | `public` | Package visibility for GitHub Container Registry: `public` or `private`. Only applies to `ghcr.io` |
 | `github-token` | No | - | GitHub token for creating individual releases per package |
 | `force-release` | No | `false` | Force recreate releases by deleting existing releases and tags first |
 
