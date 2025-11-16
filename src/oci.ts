@@ -114,7 +114,6 @@ export async function pushToOCI(options: OCIPushOptions): Promise<OCIPushResult>
       const annotations = [
         `org.opencontainers.image.title=${pkgName}`,
         `org.opencontainers.image.version=${version}`,
-        `org.opencontainers.image.description=Command Launcher Package - Install: cdt package install --file oci://${ociRef}:${version}`,
         `com.github.package.type=oras`,
       ];
 
