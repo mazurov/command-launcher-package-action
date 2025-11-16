@@ -114,6 +114,7 @@ export async function pushToOCI(options: OCIPushOptions): Promise<OCIPushResult>
       const annotations = [
         `org.opencontainers.image.title=${pkgName}`,
         `org.opencontainers.image.version=${version}`,
+        `org.opencontainers.image.description=Command Launcher Package - Install: cdt package install --file oci://${ociRef}:${version}`,
       ];
 
       // Add repository source annotation if available (links package to GitHub repo)
