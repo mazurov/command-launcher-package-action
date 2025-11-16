@@ -15,6 +15,7 @@ export interface OCIPushOptions {
   username: string;
   token: string;
   forceRelease?: boolean; // Override existing OCI tags (force push)
+  visibility?: 'public' | 'private'; // Package visibility for GitHub Container Registry (default: public)
 }
 
 export interface OCIPushResult {
@@ -25,11 +26,24 @@ export interface OCIPushResult {
 export async function pushToOCI(options: OCIPushOptions): Promise<OCIPushResult> {
   logger.header('Pushing Packages to OCI Registry');
 
-  const { outputDirectory, registry, username, token, forceRelease = false } = options;
+  const {
+    outputDirectory,
+    registry,
+    username,
+    token,
+    forceRelease = false,
+    visibility = 'public',
+  } = options;
 
   logger.info(`Output Directory: ${outputDirectory}`);
   logger.info(`Registry: ${registry}`);
   logger.info(`Username: ${username}`);
+
+  // Check if this is GitHub Container Registry
+  const isGHCR = registry.toLowerCase().includes('ghcr.io');
+  if (isGHCR) {
+    logger.info(`Package Visibility: ${visibility} (GitHub Container Registry)`);
+  }
 
   // Ensure ORAS is installed
   await ensureOrasInstalled();
@@ -106,6 +120,11 @@ export async function pushToOCI(options: OCIPushOptions): Promise<OCIPushResult>
 
       logger.success(`✅ Pushed: ${ociRef}:${version}`);
       logger.success(`✅ Tagged: ${ociRef}:latest`);
+
+      // Set package visibility for GitHub Container Registry
+      if (isGHCR) {
+        await setGitHubPackageVisibility(safeName, visibility, token);
+      }
 
       pushedCount++;
     } catch (error) {
@@ -257,4 +276,54 @@ async function orasPush(
 async function orasTag(ociRef: string, sourceTag: string, targetTag: string): Promise<void> {
   logger.info(`Command: oras tag ${ociRef}:${sourceTag} ${targetTag}`);
   await exec.exec('oras', ['tag', `${ociRef}:${sourceTag}`, targetTag]);
+}
+
+/**
+ * Set package visibility for GitHub Container Registry
+ * Uses GitHub REST API to change package visibility to public or private
+ */
+async function setGitHubPackageVisibility(
+  packageName: string,
+  visibility: 'public' | 'private',
+  token: string
+): Promise<void> {
+  logger.info(`Setting package visibility to '${visibility}' for: ${packageName}`);
+
+  try {
+    // GitHub API endpoint for setting package visibility
+    // Documentation: https://docs.github.com/en/rest/packages#update-a-package-for-the-authenticated-user
+    const apiUrl = `https://api.github.com/user/packages/container/${packageName}/visibility`;
+
+    const curlArgs = [
+      '-X',
+      'PATCH',
+      '-H',
+      `Authorization: Bearer ${token}`,
+      '-H',
+      'Accept: application/vnd.github+json',
+      '-H',
+      'X-GitHub-Api-Version: 2022-11-28',
+      apiUrl,
+      '-d',
+      `{"visibility":"${visibility}"}`,
+      '--silent',
+      '--show-error',
+      '--fail',
+    ];
+
+    logger.info(`Setting visibility via GitHub API: PATCH ${apiUrl}`);
+
+    await exec.exec('curl', curlArgs, { silent: true });
+
+    logger.success(`✅ Package visibility set to '${visibility}'`);
+  } catch (error) {
+    // Don't fail the action if visibility setting fails - log warning instead
+    logger.warning(
+      `Failed to set package visibility: ${error instanceof Error ? error.message : String(error)}`
+    );
+    logger.warning(
+      'You can manually change package visibility at: https://github.com/settings/packages'
+    );
+    logger.warning('This does not affect the package push - it was successful');
+  }
 }

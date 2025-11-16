@@ -37,6 +37,11 @@ inputs:
     required: false
     default: ''
 
+  oci-visibility:
+    description: 'Package visibility for GitHub Container Registry: public or private (default: public). Only applicable when oci-registry is ghcr.io'
+    required: false
+    default: 'public'
+
   github-token:
     description: 'GitHub token for creating individual releases for each plugin (format: plugin-name-version)'
     required: false

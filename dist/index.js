@@ -32694,6 +32694,7 @@ async function run() {
         const ociRegistry = core.getInput('oci-registry');
         const ociUsername = core.getInput('oci-username');
         const ociToken = core.getInput('oci-token');
+        const ociVisibility = (core.getInput('oci-visibility') || 'public');
         const githubToken = core.getInput('github-token');
         const forceRelease = core.getInput('force-release') === 'true';
         const githubRepository = process.env.GITHUB_REPOSITORY || '';
@@ -32742,6 +32743,7 @@ async function run() {
                 username: ociUsername,
                 token: ociToken,
                 forceRelease,
+                visibility: ociVisibility,
             });
         }
         // Step 4: Create GitHub Releases (one release per plugin)
@@ -32827,10 +32829,15 @@ const logger_1 = __nccwpck_require__(7893);
 const manifest_1 = __nccwpck_require__(3148);
 async function pushToOCI(options) {
     logger_1.logger.header('Pushing Packages to OCI Registry');
-    const { outputDirectory, registry, username, token, forceRelease = false } = options;
+    const { outputDirectory, registry, username, token, forceRelease = false, visibility = 'public', } = options;
     logger_1.logger.info(`Output Directory: ${outputDirectory}`);
     logger_1.logger.info(`Registry: ${registry}`);
     logger_1.logger.info(`Username: ${username}`);
+    // Check if this is GitHub Container Registry
+    const isGHCR = registry.toLowerCase().includes('ghcr.io');
+    if (isGHCR) {
+        logger_1.logger.info(`Package Visibility: ${visibility} (GitHub Container Registry)`);
+    }
     // Ensure ORAS is installed
     await ensureOrasInstalled();
     // Login to OCI registry
@@ -32890,6 +32897,10 @@ async function pushToOCI(options) {
             await orasTag(ociRef, version, 'latest');
             logger_1.logger.success(`✅ Pushed: ${ociRef}:${version}`);
             logger_1.logger.success(`✅ Tagged: ${ociRef}:latest`);
+            // Set package visibility for GitHub Container Registry
+            if (isGHCR) {
+                await setGitHubPackageVisibility(safeName, visibility, token);
+            }
             pushedCount++;
         }
         catch (error) {
@@ -33006,6 +33017,43 @@ async function orasPush(ociRef, tag, pkgPath, annotations) {
 async function orasTag(ociRef, sourceTag, targetTag) {
     logger_1.logger.info(`Command: oras tag ${ociRef}:${sourceTag} ${targetTag}`);
     await exec.exec('oras', ['tag', `${ociRef}:${sourceTag}`, targetTag]);
+}
+/**
+ * Set package visibility for GitHub Container Registry
+ * Uses GitHub REST API to change package visibility to public or private
+ */
+async function setGitHubPackageVisibility(packageName, visibility, token) {
+    logger_1.logger.info(`Setting package visibility to '${visibility}' for: ${packageName}`);
+    try {
+        // GitHub API endpoint for setting package visibility
+        // Documentation: https://docs.github.com/en/rest/packages#update-a-package-for-the-authenticated-user
+        const apiUrl = `https://api.github.com/user/packages/container/${packageName}/visibility`;
+        const curlArgs = [
+            '-X',
+            'PATCH',
+            '-H',
+            `Authorization: Bearer ${token}`,
+            '-H',
+            'Accept: application/vnd.github+json',
+            '-H',
+            'X-GitHub-Api-Version: 2022-11-28',
+            apiUrl,
+            '-d',
+            `{"visibility":"${visibility}"}`,
+            '--silent',
+            '--show-error',
+            '--fail',
+        ];
+        logger_1.logger.info(`Setting visibility via GitHub API: PATCH ${apiUrl}`);
+        await exec.exec('curl', curlArgs, { silent: true });
+        logger_1.logger.success(`✅ Package visibility set to '${visibility}'`);
+    }
+    catch (error) {
+        // Don't fail the action if visibility setting fails - log warning instead
+        logger_1.logger.warning(`Failed to set package visibility: ${error instanceof Error ? error.message : String(error)}`);
+        logger_1.logger.warning('You can manually change package visibility at: https://github.com/settings/packages');
+        logger_1.logger.warning('This does not affect the package push - it was successful');
+    }
 }
 
 
