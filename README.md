@@ -9,6 +9,7 @@ A comprehensive GitHub Action for Command Launcher package lifecycle management.
 - ✅ **Manifest Validation** - Validates package manifests against Command Launcher specification
 - 📦 **Multi-format Packaging** - Creates .pkg archives for releases and/or pushes to OCI registries
 - 🔄 **Flexible Repository Modes** - Supports both single-package and multi-package repositories
+- 🔗 **Automatic Repository Linking** - OCI packages are automatically linked to your GitHub repository via OCI annotations
 - 📝 **Rich Release Notes** - Auto-generates comprehensive documentation from manifests
 - 🔧 **Local Testing** - Full support for local testing without GitHub infrastructure
 - 🚀 **Easy Integration** - Simple YAML configuration for any package repository
@@ -84,7 +85,7 @@ jobs:
           packages-directory: 'packages'  # Optional: for multi-package repos
           package-format: 'both'  # Creates .pkg AND pushes to OCI
           oci-registry: 'ghcr.io/${{ github.repository_owner }}'
-          packages-namespace: 'command-launcher'  # Optional: defaults to 'command-launcher'
+          packages-namespace: 'command-launcher'  # Optional: defaults to '' (no namespace)
           oci-username: ${{ github.actor }}
           oci-token: ${{ secrets.GITHUB_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}  # Creates individual releases
@@ -94,6 +95,8 @@ Users can install your package with:
 ```bash
 cdt package install --file https://github.com/user/repo/releases/download/package_my-package_1.0.0/my-package-1.0.0.pkg
 ```
+
+> **Note:** When using GitHub Actions with `${{ secrets.GITHUB_TOKEN }}`, packages pushed to GitHub Container Registry are automatically linked to your repository via OCI annotations (`org.opencontainers.image.source`). This enables the package page to display your repository's README and allows permission inheritance.
 
 See [Package Installation Methods](docs/INSTALLATION.md) for all installation options.
 
@@ -105,7 +108,7 @@ See [Package Installation Methods](docs/INSTALLATION.md) for all installation op
 | `validate-only` | No | `false` | Only validate manifests without packaging |
 | `package-format` | No | `zip` | Package format: `zip` (creates .pkg archives), `oci` (pushes to registry), or `both` |
 | `oci-registry` | No | - | OCI registry URL (e.g., `ghcr.io/username`) |
-| `packages-namespace` | No | `command-launcher` | Namespace path in OCI registry (e.g., `project-name`) |
+| `packages-namespace` | No | `''` (empty) | Namespace path in OCI registry (e.g., `project-name`). Empty by default (no namespace) |
 | `oci-username` | No | - | OCI registry username |
 | `oci-token` | No | - | OCI registry token/password |
 | `github-token` | No | - | GitHub token for creating individual releases per package |

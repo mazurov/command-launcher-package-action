@@ -15,6 +15,7 @@ export interface OCIPushOptions {
   packagesNamespace: string; // Namespace path in the registry (e.g., 'command-launcher')
   username: string;
   token: string;
+  repository?: string; // GitHub repository (e.g., 'owner/repo') for linking package to repo
   forceRelease?: boolean; // Override existing OCI tags (force push)
 }
 
@@ -32,6 +33,7 @@ export async function pushToOCI(options: OCIPushOptions): Promise<OCIPushResult>
     packagesNamespace,
     username,
     token,
+    repository,
     forceRelease = false,
   } = options;
 
@@ -39,6 +41,9 @@ export async function pushToOCI(options: OCIPushOptions): Promise<OCIPushResult>
   logger.info(`Registry: ${registry}`);
   logger.info(`Packages Namespace: ${packagesNamespace}`);
   logger.info(`Username: ${username}`);
+  if (repository) {
+    logger.info(`Repository: ${repository} (packages will be linked to this repo)`);
+  }
 
   // Ensure ORAS is installed
   await ensureOrasInstalled();
@@ -110,6 +115,11 @@ export async function pushToOCI(options: OCIPushOptions): Promise<OCIPushResult>
         `org.opencontainers.image.title=${pkgName}`,
         `org.opencontainers.image.version=${version}`,
       ];
+
+      // Add repository source annotation if available (links package to GitHub repo)
+      if (repository) {
+        annotations.push(`org.opencontainers.image.source=https://github.com/${repository}`);
+      }
 
       await orasPush(ociRef, version, pkgPath, annotations);
 

@@ -32692,7 +32692,7 @@ async function run() {
         const validateOnly = core.getInput('validate-only') === 'true';
         const packageFormat = core.getInput('package-format') || 'zip';
         const ociRegistry = core.getInput('oci-registry');
-        const packagesNamespace = core.getInput('packages-namespace') || 'command-launcher';
+        const packagesNamespace = core.getInput('packages-namespace') || '';
         const ociUsername = core.getInput('oci-username');
         const ociToken = core.getInput('oci-token');
         const githubToken = core.getInput('github-token');
@@ -32743,6 +32743,7 @@ async function run() {
                 packagesNamespace,
                 username: ociUsername,
                 token: ociToken,
+                repository: githubRepository || undefined,
                 forceRelease,
             });
         }
@@ -32829,11 +32830,14 @@ const logger_1 = __nccwpck_require__(7893);
 const manifest_1 = __nccwpck_require__(3148);
 async function pushToOCI(options) {
     logger_1.logger.header('Pushing Packages to OCI Registry');
-    const { outputDirectory, registry, packagesNamespace, username, token, forceRelease = false, } = options;
+    const { outputDirectory, registry, packagesNamespace, username, token, repository, forceRelease = false, } = options;
     logger_1.logger.info(`Output Directory: ${outputDirectory}`);
     logger_1.logger.info(`Registry: ${registry}`);
     logger_1.logger.info(`Packages Namespace: ${packagesNamespace}`);
     logger_1.logger.info(`Username: ${username}`);
+    if (repository) {
+        logger_1.logger.info(`Repository: ${repository} (packages will be linked to this repo)`);
+    }
     // Ensure ORAS is installed
     await ensureOrasInstalled();
     // Login to OCI registry
@@ -32891,6 +32895,10 @@ async function pushToOCI(options) {
                 `org.opencontainers.image.title=${pkgName}`,
                 `org.opencontainers.image.version=${version}`,
             ];
+            // Add repository source annotation if available (links package to GitHub repo)
+            if (repository) {
+                annotations.push(`org.opencontainers.image.source=https://github.com/${repository}`);
+            }
             await orasPush(ociRef, version, pkgPath, annotations);
             // Tag as latest
             await orasTag(ociRef, version, 'latest');
