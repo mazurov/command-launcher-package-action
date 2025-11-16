@@ -26,10 +26,12 @@ on:
     # to trigger on any push, or specify your own paths (e.g., manifest.mf, bin/**, etc.)
     paths:
       - 'packages/**'  # Multi-package mode: trigger only on changes in packages directory
+      - '.github/workflows/packages-ci.yml'  # Trigger when workflow itself changes
   pull_request:
     # IMPORTANT: For single-package mode, remove the 'paths' section below
     paths:
       - 'packages/**'  # Multi-package mode: trigger only on changes in packages directory
+      - '.github/workflows/packages-ci.yml'  # Trigger when workflow itself changes
   workflow_dispatch:
 
 permissions:
