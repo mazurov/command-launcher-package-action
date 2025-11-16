@@ -23,14 +23,14 @@ inputs:
     default: 'zip'
 
   oci-registry:
-    description: 'OCI registry URL (e.g., ghcr.io/username)'
+    description: 'OCI registry hostname (e.g., ghcr.io)'
     required: false
-    default: ''
+    default: 'ghcr.io'
 
   packages-namespace:
-    description: 'Packages namespace path in OCI registry (e.g., project-name)'
+    description: 'Packages namespace path in OCI registry. Defaults to repository name (owner/repo) when empty'
     required: false
-    default: 'command-launcher-packages'
+    default: ''
 
   oci-username:
     description: 'OCI registry username'

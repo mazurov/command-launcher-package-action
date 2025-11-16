@@ -84,8 +84,8 @@ jobs:
         with:
           packages-directory: 'packages'  # Optional: for multi-package repos
           package-format: 'both'  # Creates .pkg AND pushes to OCI
-          oci-registry: 'ghcr.io/${{ github.repository_owner }}'
-          packages-namespace: 'command-launcher-packages'  # Optional: defaults to 'command-launcher-packages'
+          oci-registry: 'ghcr.io'  # Optional: defaults to 'ghcr.io'
+          packages-namespace: '${{ github.repository }}'  # Optional: defaults to owner/repo
           oci-username: ${{ github.actor }}
           oci-token: ${{ secrets.GITHUB_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}  # Creates individual releases
@@ -107,8 +107,8 @@ See [Package Installation Methods](docs/INSTALLATION.md) for all installation op
 | `packages-directory` | No | `''` (empty) | **Empty (default)**: Checks root for `manifest.mf` (single-package) or scans root subdirectories (multi-package). **Set to path** (e.g., `'packages'`): Scans that directory for subdirectories with `manifest.mf`. |
 | `validate-only` | No | `false` | Only validate manifests without packaging |
 | `package-format` | No | `zip` | Package format: `zip` (creates .pkg archives), `oci` (pushes to registry), or `both` |
-| `oci-registry` | No | - | OCI registry URL (e.g., `ghcr.io/username`) |
-| `packages-namespace` | No | `command-launcher-packages` | Namespace path in OCI registry (e.g., `project-name`) |
+| `oci-registry` | No | `ghcr.io` | OCI registry hostname (e.g., `ghcr.io`) |
+| `packages-namespace` | No | `owner/repo` | Namespace path in OCI registry. Defaults to repository name (owner/repo) |
 | `oci-username` | No | - | OCI registry username |
 | `oci-token` | No | - | OCI registry token/password |
 | `github-token` | No | - | GitHub token for creating individual releases per package |

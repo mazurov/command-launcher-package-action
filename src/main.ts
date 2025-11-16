@@ -15,13 +15,13 @@ async function run(): Promise<void> {
     const packagesDirectory = core.getInput('packages-directory') || ''; // Default to empty (auto-detect)
     const validateOnly = core.getInput('validate-only') === 'true';
     const packageFormat = core.getInput('package-format') || 'zip';
-    const ociRegistry = core.getInput('oci-registry');
-    const packagesNamespace = core.getInput('packages-namespace') || 'command-launcher-packages';
+    const ociRegistry = core.getInput('oci-registry') || 'ghcr.io';
+    const githubRepository = process.env.GITHUB_REPOSITORY || '';
+    const packagesNamespace = core.getInput('packages-namespace') || githubRepository; // Default to owner/repo
     const ociUsername = core.getInput('oci-username');
     const ociToken = core.getInput('oci-token');
     const githubToken = core.getInput('github-token');
     const forceRelease = core.getInput('force-release') === 'true';
-    const githubRepository = process.env.GITHUB_REPOSITORY || '';
 
     logger.header('Cola Package Action');
     const displayDir =
