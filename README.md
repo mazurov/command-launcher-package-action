@@ -81,10 +81,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: mazurov/command-launcher-package-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Used for OCI push and releases
         with:
           packages-directory: 'packages'  # Optional: for multi-package repos
           package-format: 'both'  # Creates .pkg AND pushes to OCI
-          # All tokens default to GITHUB_TOKEN - no need to specify!
 ```
 
 Users can install your package with:
@@ -106,7 +107,7 @@ See [Package Installation Methods](docs/INSTALLATION.md) for all installation op
 | `oci-registry` | No | `ghcr.io` | OCI registry hostname (e.g., `ghcr.io`) |
 | `packages-namespace` | No | `owner/repo` | Namespace path in OCI registry. Defaults to repository name (owner/repo) |
 | `oci-username` | No | GitHub actor | OCI registry username. Defaults to GitHub actor |
-| `oci-token` | No | `GITHUB_TOKEN` | OCI registry token/password. Defaults to GITHUB_TOKEN |
+| `oci-token` | No | `GITHUB_TOKEN` env | OCI registry token/password. Defaults to `GITHUB_TOKEN` environment variable |
 | `force-release` | No | `false` | Force recreate releases by deleting existing releases and tags first |
 
 ## Outputs

@@ -18,10 +18,10 @@ async function run(): Promise<void> {
     const ociRegistry = core.getInput('oci-registry') || 'ghcr.io';
     const githubRepository = process.env.GITHUB_REPOSITORY || '';
     const githubActor = process.env.GITHUB_ACTOR || '';
-    const githubToken = process.env.GITHUB_TOKEN || '';
+    const githubToken = process.env.GITHUB_TOKEN || ''; // Read from env (set in workflow)
     const packagesNamespace = core.getInput('packages-namespace') || githubRepository; // Default to owner/repo
     const ociUsername = core.getInput('oci-username') || githubActor; // Default to GitHub actor
-    const ociToken = core.getInput('oci-token') || githubToken; // Default to GITHUB_TOKEN
+    const ociToken = core.getInput('oci-token') || githubToken; // Default to GITHUB_TOKEN from env
     const forceRelease = core.getInput('force-release') === 'true';
 
     logger.header('Cola Package Action');

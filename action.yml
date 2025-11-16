@@ -38,7 +38,7 @@ inputs:
     default: ''
 
   oci-token:
-    description: 'OCI registry token/password. Defaults to GITHUB_TOKEN'
+    description: 'OCI registry token/password. Defaults to GITHUB_TOKEN env var if set'
     required: false
     default: ''
 

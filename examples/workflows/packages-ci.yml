@@ -122,16 +122,17 @@ jobs:
       - name: Package and publish packages
         id: package
         uses: mazurov/command-launcher-package-action@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           # For single-package repo: omit packages-directory
           # For multi-package repo: uncomment and set the directory
           # packages-directory: 'packages'
           package-format: 'both'  # Create .pkg archives AND push to OCI registry
-          # All parameters below have smart defaults and can be omitted:
+          # Optional overrides (smart defaults):
           # oci-registry: 'ghcr.io'
           # packages-namespace: '${{ github.repository }}'  # Defaults to owner/repo
           # oci-username: '${{ github.actor }}'
-          # oci-token: '${{ secrets.GITHUB_TOKEN }}'
           # force-release: 'true'  # Uncomment to force recreate releases (deletes existing releases/tags first)
 
       - name: Summary
