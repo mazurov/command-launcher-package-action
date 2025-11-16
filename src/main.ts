@@ -17,10 +17,11 @@ async function run(): Promise<void> {
     const packageFormat = core.getInput('package-format') || 'zip';
     const ociRegistry = core.getInput('oci-registry') || 'ghcr.io';
     const githubRepository = process.env.GITHUB_REPOSITORY || '';
+    const githubActor = process.env.GITHUB_ACTOR || '';
+    const githubToken = process.env.GITHUB_TOKEN || '';
     const packagesNamespace = core.getInput('packages-namespace') || githubRepository; // Default to owner/repo
-    const ociUsername = core.getInput('oci-username');
-    const ociToken = core.getInput('oci-token');
-    const githubToken = core.getInput('github-token');
+    const ociUsername = core.getInput('oci-username') || githubActor; // Default to GitHub actor
+    const ociToken = core.getInput('oci-token') || githubToken; // Default to GITHUB_TOKEN
     const forceRelease = core.getInput('force-release') === 'true';
 
     logger.header('Cola Package Action');

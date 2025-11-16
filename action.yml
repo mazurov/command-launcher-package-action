@@ -33,17 +33,12 @@ inputs:
     default: ''
 
   oci-username:
-    description: 'OCI registry username'
+    description: 'OCI registry username. Defaults to GitHub actor when empty'
     required: false
     default: ''
 
   oci-token:
-    description: 'OCI registry token/password'
-    required: false
-    default: ''
-
-  github-token:
-    description: 'GitHub token for creating individual releases for each plugin (format: plugin-name-version)'
+    description: 'OCI registry token/password. Defaults to GITHUB_TOKEN'
     required: false
     default: ''
 

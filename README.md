@@ -84,11 +84,7 @@ jobs:
         with:
           packages-directory: 'packages'  # Optional: for multi-package repos
           package-format: 'both'  # Creates .pkg AND pushes to OCI
-          oci-registry: 'ghcr.io'  # Optional: defaults to 'ghcr.io'
-          packages-namespace: '${{ github.repository }}'  # Optional: defaults to owner/repo
-          oci-username: ${{ github.actor }}
-          oci-token: ${{ secrets.GITHUB_TOKEN }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}  # Creates individual releases
+          # All tokens default to GITHUB_TOKEN - no need to specify!
 ```
 
 Users can install your package with:
@@ -109,9 +105,8 @@ See [Package Installation Methods](docs/INSTALLATION.md) for all installation op
 | `package-format` | No | `zip` | Package format: `zip` (creates .pkg archives), `oci` (pushes to registry), or `both` |
 | `oci-registry` | No | `ghcr.io` | OCI registry hostname (e.g., `ghcr.io`) |
 | `packages-namespace` | No | `owner/repo` | Namespace path in OCI registry. Defaults to repository name (owner/repo) |
-| `oci-username` | No | - | OCI registry username |
-| `oci-token` | No | - | OCI registry token/password |
-| `github-token` | No | - | GitHub token for creating individual releases per package |
+| `oci-username` | No | GitHub actor | OCI registry username. Defaults to GitHub actor |
+| `oci-token` | No | `GITHUB_TOKEN` | OCI registry token/password. Defaults to GITHUB_TOKEN |
 | `force-release` | No | `false` | Force recreate releases by deleting existing releases and tags first |
 
 ## Outputs

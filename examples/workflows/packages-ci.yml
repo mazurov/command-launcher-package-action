@@ -1,8 +1,8 @@
 # ==============================================================================
-# EXAMPLE WORKFLOW FOR PLUGIN REPOSITORIES
+# EXAMPLE WORKFLOW FOR PACKAGE REPOSITORIES
 # ==============================================================================
-# This is a template workflow for repositories that contain Command Launcher plugins.
-# Copy this file to YOUR plugin repository at: .github/workflows/plugins-ci.yml
+# This is a template workflow for repositories that contain Command Launcher packages.
+# Copy this file to YOUR package repository at: .github/workflows/packages-ci.yml
 #
 # DO NOT use this in the command-launcher-package-action repository itself!
 #
@@ -10,36 +10,26 @@
 # 1. Single-package repo: Root directory contains manifest.mf
 #    - Don't specify packages-directory (or set to '')
 #    - Repository structure: /manifest.mf, /README.md, /bin/, etc.
+#    - IMPORTANT: Remove the 'paths' filter below or set to your specific files
 #
 # 2. Multi-package repo: Multiple packages in subdirectories
 #    - Set packages-directory to your packages folder (e.g., 'packages')
-#    - Repository structure: /packages/plugin1/, /packages/plugin2/, etc.
+#    - Repository structure: /packages/package1/, /packages/package2/, etc.
+#    - IMPORTANT: Keep 'paths: packages/**' filter to trigger only on package changes
 # ==============================================================================
 
-name: Plugin CI/CD Pipeline
+name: Packages CI/CD Pipeline
 
 on:
   push:
-    # Validate on pushes to ANY branch
-    # Only main/develop will package and publish plugins (controlled by job conditions)
-    # For single-package repo: use 'manifest.mf' and other relevant paths
-    # For multi-package repo: use 'packages/**'
+    # IMPORTANT: For single-package mode, remove the 'paths' section below
+    # to trigger on any push, or specify your own paths (e.g., manifest.mf, bin/**, etc.)
     paths:
-      - 'manifest.mf'       # Single-package mode
-      - 'packages/**'       # Multi-package mode
-      - 'bin/**'            # Plugin executables
-      - 'lib/**'            # Plugin libraries
-      - 'README.md'         # Plugin documentation
-      - '.github/workflows/plugins-ci.yml'
+      - 'packages/**'  # Multi-package mode: trigger only on changes in packages directory
   pull_request:
-    # Validate on ALL pull requests (regardless of target branch)
+    # IMPORTANT: For single-package mode, remove the 'paths' section below
     paths:
-      - 'manifest.mf'
-      - 'packages/**'
-      - 'bin/**'
-      - 'lib/**'
-      - 'README.md'
-      - '.github/workflows/plugins-ci.yml'
+      - 'packages/**'  # Multi-package mode: trigger only on changes in packages directory
   workflow_dispatch:
 
 permissions:
@@ -51,7 +41,7 @@ jobs:
   # Validation Job - Runs on every push and PR
   # ============================================================================
   validate:
-    name: Validate Plugin Manifests
+    name: Validate Package Manifests
     runs-on: ubuntu-latest
     outputs:
       validated-plugins: ${{ steps.validate.outputs.validated-plugins }}
@@ -72,7 +62,7 @@ jobs:
       - name: Display validation results
         run: |
           echo "✅ Validation completed successfully"
-          echo "Validated plugins: ${{ steps.validate.outputs.validated-plugins }}"
+          echo "Validated packages: ${{ steps.validate.outputs.validated-plugins }}"
 
   # ============================================================================
   # Test Package Job - Runs on PRs and branches
@@ -87,7 +77,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Package plugins (.pkg)
+      - name: Package packages (.pkg)
         uses: mazurov/command-launcher-package-action@main
         with:
           # For single-package repo: omit packages-directory
@@ -104,16 +94,16 @@ jobs:
         if: ${{ !env.ACT }}  # Skip when running with act locally
         uses: actions/upload-artifact@v4
         with:
-          name: test-plugin-packages
+          name: test-packages
           path: build/packages/*.pkg
           retention-days: 7
 
   # ============================================================================
   # Release Job - Runs on main and develop branches only
-  # Packages plugins, creates individual GitHub releases, and publishes to OCI registry
+  # Packages packages, creates individual GitHub releases, and publishes to OCI registry
   # ============================================================================
   release:
-    name: Release Plugins
+    name: Release Packages
     runs-on: ubuntu-latest
     needs: validate
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
@@ -127,7 +117,7 @@ jobs:
         with:
           fetch-depth: 0  # Full history for better release notes
 
-      - name: Package and publish plugins
+      - name: Package and publish packages
         id: package
         uses: mazurov/command-launcher-package-action@main
         with:
@@ -135,29 +125,30 @@ jobs:
           # For multi-package repo: uncomment and set the directory
           # packages-directory: 'packages'
           package-format: 'both'  # Create .pkg archives AND push to OCI registry
-          oci-registry: 'ghcr.io/${{ github.repository_owner }}'
-          oci-username: ${{ github.actor }}
-          oci-token: ${{ secrets.OCI_TOKEN }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}  # Creates individual releases per plugin
+          # All parameters below have smart defaults and can be omitted:
+          # oci-registry: 'ghcr.io'
+          # packages-namespace: '${{ github.repository }}'  # Defaults to owner/repo
+          # oci-username: '${{ github.actor }}'
+          # oci-token: '${{ secrets.GITHUB_TOKEN }}'
           # force-release: 'true'  # Uncomment to force recreate releases (deletes existing releases/tags first)
 
       - name: Summary
         run: |
           echo "## ✅ Release Completed Successfully" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📦 Individual Plugin Releases" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Individual Package Releases" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Each plugin has been released with tag format: \`<plugin-name>-<version>\`" >> $GITHUB_STEP_SUMMARY
+          echo "Each package has been released with tag format: \`package_<package-name>_<version>\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Packages:** ${{ steps.package.outputs.packaged-artifacts }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🚀 OCI Registry" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Registry:** \`ghcr.io/${{ github.repository_owner }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Registry:** \`ghcr.io/${{ github.repository }}/<package-name>:version\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Pull plugins with:" >> $GITHUB_STEP_SUMMARY
+          echo "Install packages with Command Launcher:" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "oras pull ghcr.io/${{ github.repository_owner }}/<plugin-name>:latest" >> $GITHUB_STEP_SUMMARY
+          echo "cdt package install ghcr.io/${{ github.repository }}/<package-name>:latest" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "> **Note:** Existing releases and OCI versions are automatically skipped" >> $GITHUB_STEP_SUMMARY
@@ -182,7 +173,7 @@ jobs:
             const { data: runs } = await github.rest.actions.listWorkflowRuns({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              workflow_id: 'plugins-ci.yml',
+              workflow_id: 'packages-ci.yml',
               status: 'success',
               created: `<${timestamp}`,
               per_page: 100
