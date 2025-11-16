@@ -27,6 +27,11 @@ inputs:
     required: false
     default: ''
 
+  packages-namespace:
+    description: 'Packages namespace path in OCI registry (e.g., project-name)'
+    required: false
+    default: 'command-launcher'
+
   oci-username:
     description: 'OCI registry username'
     required: false

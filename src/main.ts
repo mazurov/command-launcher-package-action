@@ -16,6 +16,7 @@ async function run(): Promise<void> {
     const validateOnly = core.getInput('validate-only') === 'true';
     const packageFormat = core.getInput('package-format') || 'zip';
     const ociRegistry = core.getInput('oci-registry');
+    const packagesNamespace = core.getInput('packages-namespace') || 'command-launcher';
     const ociUsername = core.getInput('oci-username');
     const ociToken = core.getInput('oci-token');
     const githubToken = core.getInput('github-token');
@@ -75,6 +76,7 @@ async function run(): Promise<void> {
       await pushToOCI({
         outputDirectory,
         registry: ociRegistry,
+        packagesNamespace,
         username: ociUsername,
         token: ociToken,
         forceRelease,

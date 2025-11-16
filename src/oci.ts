@@ -12,6 +12,7 @@ import { sanitizeName } from './utils/manifest';
 export interface OCIPushOptions {
   outputDirectory: string; // Directory containing the generated ZIP files
   registry: string;
+  packagesNamespace: string; // Namespace path in the registry (e.g., 'command-launcher')
   username: string;
   token: string;
   forceRelease?: boolean; // Override existing OCI tags (force push)
@@ -25,10 +26,18 @@ export interface OCIPushResult {
 export async function pushToOCI(options: OCIPushOptions): Promise<OCIPushResult> {
   logger.header('Pushing Packages to OCI Registry');
 
-  const { outputDirectory, registry, username, token, forceRelease = false } = options;
+  const {
+    outputDirectory,
+    registry,
+    packagesNamespace,
+    username,
+    token,
+    forceRelease = false,
+  } = options;
 
   logger.info(`Output Directory: ${outputDirectory}`);
   logger.info(`Registry: ${registry}`);
+  logger.info(`Packages Namespace: ${packagesNamespace}`);
   logger.info(`Username: ${username}`);
 
   // Ensure ORAS is installed
@@ -67,7 +76,10 @@ export async function pushToOCI(options: OCIPushOptions): Promise<OCIPushResult>
 
       const [, pkgName, version] = match;
       const safeName = sanitizeName(pkgName);
-      const ociRef = `${registry}/${safeName}`;
+      // Construct OCI reference, handling empty namespace to avoid double slashes
+      const ociRef = packagesNamespace
+        ? `${registry}/${packagesNamespace}/${safeName}`
+        : `${registry}/${safeName}`;
 
       logger.info(`Package: ${pkgName}`);
       logger.info(`Version: ${version}`);

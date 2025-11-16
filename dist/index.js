@@ -32692,6 +32692,7 @@ async function run() {
         const validateOnly = core.getInput('validate-only') === 'true';
         const packageFormat = core.getInput('package-format') || 'zip';
         const ociRegistry = core.getInput('oci-registry');
+        const packagesNamespace = core.getInput('packages-namespace') || 'command-launcher';
         const ociUsername = core.getInput('oci-username');
         const ociToken = core.getInput('oci-token');
         const githubToken = core.getInput('github-token');
@@ -32739,6 +32740,7 @@ async function run() {
             await (0, oci_1.pushToOCI)({
                 outputDirectory,
                 registry: ociRegistry,
+                packagesNamespace,
                 username: ociUsername,
                 token: ociToken,
                 forceRelease,
@@ -32827,9 +32829,10 @@ const logger_1 = __nccwpck_require__(7893);
 const manifest_1 = __nccwpck_require__(3148);
 async function pushToOCI(options) {
     logger_1.logger.header('Pushing Packages to OCI Registry');
-    const { outputDirectory, registry, username, token, forceRelease = false } = options;
+    const { outputDirectory, registry, packagesNamespace, username, token, forceRelease = false, } = options;
     logger_1.logger.info(`Output Directory: ${outputDirectory}`);
     logger_1.logger.info(`Registry: ${registry}`);
+    logger_1.logger.info(`Packages Namespace: ${packagesNamespace}`);
     logger_1.logger.info(`Username: ${username}`);
     // Ensure ORAS is installed
     await ensureOrasInstalled();
@@ -32858,7 +32861,10 @@ async function pushToOCI(options) {
             }
             const [, pkgName, version] = match;
             const safeName = (0, manifest_1.sanitizeName)(pkgName);
-            const ociRef = `${registry}/${safeName}`;
+            // Construct OCI reference, handling empty namespace to avoid double slashes
+            const ociRef = packagesNamespace
+                ? `${registry}/${packagesNamespace}/${safeName}`
+                : `${registry}/${safeName}`;
             logger_1.logger.info(`Package: ${pkgName}`);
             logger_1.logger.info(`Version: ${version}`);
             logger_1.logger.info(`OCI Reference: ${ociRef}:${version}`);

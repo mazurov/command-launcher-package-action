@@ -84,6 +84,7 @@ jobs:
           packages-directory: 'packages'  # Optional: for multi-package repos
           package-format: 'both'  # Creates .pkg AND pushes to OCI
           oci-registry: 'ghcr.io/${{ github.repository_owner }}'
+          packages-namespace: 'command-launcher'  # Optional: defaults to 'command-launcher'
           oci-username: ${{ github.actor }}
           oci-token: ${{ secrets.GITHUB_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}  # Creates individual releases
@@ -104,6 +105,7 @@ See [Package Installation Methods](docs/INSTALLATION.md) for all installation op
 | `validate-only` | No | `false` | Only validate manifests without packaging |
 | `package-format` | No | `zip` | Package format: `zip` (creates .pkg archives), `oci` (pushes to registry), or `both` |
 | `oci-registry` | No | - | OCI registry URL (e.g., `ghcr.io/username`) |
+| `packages-namespace` | No | `command-launcher` | Namespace path in OCI registry (e.g., `project-name`) |
 | `oci-username` | No | - | OCI registry username |
 | `oci-token` | No | - | OCI registry token/password |
 | `github-token` | No | - | GitHub token for creating individual releases per package |
