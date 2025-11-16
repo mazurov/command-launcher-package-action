@@ -13,7 +13,16 @@ A comprehensive GitHub Action for Command Launcher package lifecycle management.
 - 🔧 **Local Testing** - Full support for local testing without GitHub infrastructure
 - 🚀 **Easy Integration** - Simple YAML configuration for any package repository
 
-## 📚 Ready-to-Use Workflow Template
+## 📚 Ready-to-Use Examples
+
+### Live Example Repositories
+
+See this action in use:
+
+- **[Single Package Example](https://github.com/mazurov/cdt-package-example)** - Example of single-package repository mode
+- **[Multi-Package Example](https://github.com/mazurov/cdt-packages-monorepo-example)** - Example of multi-package repository mode (monorepo)
+
+### Workflow Template
 
 Check out the complete CI/CD workflow example:
 
