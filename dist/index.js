@@ -33188,6 +33188,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.createPluginReleases = createPluginReleases;
+exports.generateOciInstallationMethods = generateOciInstallationMethods;
 const github = __importStar(__nccwpck_require__(3228));
 const exec = __importStar(__nccwpck_require__(5236));
 const fs = __importStar(__nccwpck_require__(1943));
@@ -33362,12 +33363,62 @@ async function deleteExistingRelease(octokit, owner, repo, tagName, remoteUrl) {
         throw error;
     }
 }
-async function generateReleaseNotes(pkg, owner, repo, tagName, ociRegistry) {
+/**
+ * Generate OCI installation methods documentation
+ * @param pkg - Package information
+ * @param ociRegistry - OCI registry URL
+ * @returns Markdown string with OCI installation methods
+ * @remarks Currently unused - will be enabled when Command Launcher adds OCI support
+ * @internal Reserved for future use when Command Launcher supports OCI registries
+ */
+function generateOciInstallationMethods(pkg, ociRegistry) {
+    const safeName = pkg.name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+    const ociRef = `${ociRegistry}/${safeName}`;
+    const ociUrl = `oci://${ociRef}:${pkg.version}`;
+    const ociLatestUrl = `oci://${ociRef}:latest`;
+    return `
+### Method 3: OCI Registry (Pinned Version)
+
+> **Note:** OCI registry support will be added in future versions of Command Launcher.
+
+Add the following record to your Command Launcher remote registry's \`index.json\` file:
+
+\`\`\`json
+{
+  "name": "${pkg.name}",
+  "version": "${pkg.version}",
+  "url": "${ociUrl}",
+  "startPartition": 0,
+  "endPartition": 9
+}
+\`\`\`
+
+### Method 4: OCI Registry (Auto-update to Latest)
+
+> **Note:** OCI registry support will be added in future versions of Command Launcher.
+
+Add the following record to your Command Launcher remote registry's \`index.json\` file (without version tag for automatic updates):
+
+\`\`\`json
+{
+  "name": "${pkg.name}",
+  "url": "${ociLatestUrl}",
+  "startPartition": 0,
+  "endPartition": 9
+}
+\`\`\`
+
+This will automatically fetch the latest version of the plugin.`;
+}
+async function generateReleaseNotes(pkg, owner, repo, tagName, ociRegistry // Reserved for future OCI support in Command Launcher
+) {
     // Read manifest from source directory
     const yaml = await Promise.resolve().then(() => __importStar(__nccwpck_require__(8815)));
     const manifestPath = path.join(pkg.sourceDirectory, 'manifest.mf');
     const manifestContent = await fs.readFile(manifestPath, 'utf-8');
     const manifest = yaml.parse(manifestContent);
+    // Suppress unused variable warning - ociRegistry is reserved for future use
+    void ociRegistry;
     // Read README if exists
     let readmeContent = '';
     const readmePath = path.join(pkg.sourceDirectory, 'README.md');
@@ -33445,19 +33496,25 @@ async function generateReleaseNotes(pkg, owner, repo, tagName, ociRegistry) {
     if (readmeContent) {
         readmeSection = `## 📖 Documentation\n\n${readmeContent}\n\n`;
     }
-    let installationSection = `## 📦 Installation
+    const installationSection = `## 📦 Installation
 
 ### Method 1: Command Line (Direct Install)
 
 Install directly using Command Launcher CLI:
 
 \`\`\`bash
+<command_launcher_cli> package install --file ${downloadUrl}
+\`\`\`
+
+If your CLI is named \`cdt\`:
+
+\`\`\`bash
 cdt package install --file ${downloadUrl}
 \`\`\`
 
-### Method 2: GitHub Release (Pinned Version)
+### Method 2: Command Launcher Remote Registry (Pinned Version)
 
-Add the following record to your \`index.json\`:
+Add the following record to your Command Launcher remote registry's \`index.json\` file:
 
 \`\`\`json
 {
@@ -33469,47 +33526,11 @@ Add the following record to your \`index.json\`:
   "endPartition": 9
 }
 \`\`\``;
-    // Add OCI installation method if registry is provided
-    if (ociRegistry) {
-        const safeName = pkg.name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
-        const ociRef = `${ociRegistry}/${safeName}`;
-        const ociUrl = `oci://${ociRef}:${pkg.version}`;
-        const ociLatestUrl = `oci://${ociRef}:latest`;
-        installationSection += `
-
-### Method 3: OCI Registry (Pinned Version)
-
-> **Note:** OCI registry support will be added in future versions of Command Launcher.
-
-Add the following record to your \`index.json\`:
-
-\`\`\`json
-{
-  "name": "${pkg.name}",
-  "version": "${pkg.version}",
-  "url": "${ociUrl}",
-  "startPartition": 0,
-  "endPartition": 9
-}
-\`\`\`
-
-### Method 4: OCI Registry (Auto-update to Latest)
-
-> **Note:** OCI registry support will be added in future versions of Command Launcher.
-
-Add the following record to your \`index.json\` (without version tag for automatic updates):
-
-\`\`\`json
-{
-  "name": "${pkg.name}",
-  "url": "${ociLatestUrl}",
-  "startPartition": 0,
-  "endPartition": 9
-}
-\`\`\`
-
-This will automatically fetch the latest version of the plugin.`;
-    }
+    // OCI installation methods - commented out as OCI is not yet supported in Command Launcher
+    // Uncomment when Command Launcher adds OCI registry support
+    // if (ociRegistry) {
+    //   installationSection += generateOciInstallationMethods(pkg, ociRegistry);
+    // }
     return `# ${pkg.name} v${pkg.version}
 
 ${overviewSection}${commandsSection}${readmeSection}${installationSection}
@@ -33520,7 +33541,7 @@ ${overviewSection}${commandsSection}${readmeSection}${installationSection}
 - **Version:** ${pkg.version}
 - **Size:** ${formatBytes(pkg.size)}
 - **SHA256:** \`${checksum}\`
-- **Download URL:** ${downloadUrl}${ociRegistry ? `\n- **OCI Reference:** \`${ociRegistry}/${pkg.name.toLowerCase().replace(/[^a-z0-9-]/g, '-')}:${pkg.version}\`` : ''}
+- **Download URL:** ${downloadUrl}
 
 ---
 

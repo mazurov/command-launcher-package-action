@@ -12,7 +12,13 @@ This is a valid test plugin for testing the Command Launcher Package Action.
 ## Installation
 
 ```bash
-cola install valid-test
+<command_launcher_cli> package install --file <url>
+```
+
+If your CLI is named `cdt`:
+
+```bash
+cdt package install --file <url>
 ```
 
 ## Usage

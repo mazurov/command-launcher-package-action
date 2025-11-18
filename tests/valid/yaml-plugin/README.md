@@ -12,7 +12,13 @@ This is a test plugin using **YAML format** for the manifest file.
 ## Installation
 
 ```bash
-cola install yaml-test
+<command_launcher_cli> package install --file <url>
+```
+
+If your CLI is named `cdt`:
+
+```bash
+cdt package install --file <url>
 ```
 
 ## Usage
